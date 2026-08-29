@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import {
   Wallet, TrendingDown, TrendingUp, LogOut, Plus, Trash2, X, Users, ShieldCheck,
   ClipboardList, Receipt, PiggyBank, CircleDot, ImagePlus, Loader2, Leaf,
-  LayoutDashboard, Lightbulb, CalendarDays, IndianRupee
+  LayoutDashboard, Lightbulb, CalendarDays, IndianRupee, Pencil, Save
 } from "lucide-react";
 import { initializeApp } from "firebase/app";
 import { getFirestore, doc, setDoc, onSnapshot } from "firebase/firestore";
@@ -27,8 +27,8 @@ const db = getFirestore(firebaseApp);
 
 // Same Cloudinary account as the staff app — used here only for optional
 // receipt photos attached to an expense entry.
-const CLOUDINARY_CLOUD_NAME = "n7puth5b";
-const CLOUDINARY_UPLOAD_PRESET = "expense";
+const CLOUDINARY_CLOUD_NAME = "YOUR_CLOUD_NAME";
+const CLOUDINARY_UPLOAD_PRESET = "YOUR_UPLOAD_PRESET";
 
 const BRAND = {
   logo: "https://www.serengeti.in/logo.png",
@@ -485,6 +485,8 @@ function AddExpense({ expenses, setExpenses, currentUser }) {
 function Ledger({ expenses, setExpenses }) {
   const months = monthsFromFYStart().reverse();
   const [month, setMonth] = useState(months[0] || monthKey(todayStr()));
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ particulars: "", folio: "", amount: "" });
 
   const filtered = expenses
     .filter((e) => monthKey(e.date) === month)
@@ -492,6 +494,20 @@ function Ledger({ expenses, setExpenses }) {
   const total = filtered.reduce((s, e) => s + e.amount, 0);
 
   const removeEntry = (id) => setExpenses(expenses.filter((e) => e.id !== id));
+
+  const startEdit = (e) => {
+    setEditingId(e.id);
+    setEditForm({ particulars: e.particulars, folio: e.folio || "", amount: e.amount.toString() });
+  };
+  const cancelEdit = () => setEditingId(null);
+  const saveEdit = (id) => {
+    if (!editForm.particulars.trim() || !editForm.amount) return;
+    setExpenses(expenses.map((e) => e.id === id
+      ? { ...e, particulars: editForm.particulars.trim(), folio: editForm.folio.trim(), amount: parseFloat(editForm.amount) }
+      : e
+    ));
+    setEditingId(null);
+  };
 
   return (
     <div>
@@ -502,25 +518,45 @@ function Ledger({ expenses, setExpenses }) {
         </select>
       </div>
       <div className="bg-white rounded-2xl shadow-md overflow-hidden">
-        <div className="grid grid-cols-[70px_1fr_70px_90px_36px] gap-2 px-4 py-2.5 bg-[#F0EBDD] text-[9px] font-ui uppercase tracking-widest text-[#5c5648] font-medium">
+        <div className="grid grid-cols-[70px_1fr_70px_90px_60px] gap-2 px-4 py-2.5 bg-[#F0EBDD] text-[9px] font-ui uppercase tracking-widest text-[#5c5648] font-medium">
           <span>Date</span><span>Particulars</span><span>Folio</span><span className="text-right">Amount</span><span></span>
         </div>
         <div className="divide-y divide-[#F0EBDD] max-h-[55vh] overflow-y-auto">
           {filtered.length === 0 && <div className="px-4 py-6 text-sm text-[#9C9686] font-ui text-center">No entries for {monthLabel(month)}.</div>}
           {filtered.map((e) => (
-            <div key={e.id} className="grid grid-cols-[70px_1fr_70px_90px_36px] gap-2 px-4 py-2.5 items-center text-sm">
-              <span className="font-ticket text-xs text-[#9C9686]">{e.date.slice(8, 10)}/{e.date.slice(5, 7)}</span>
-              <span className="text-[#16261F] truncate flex items-center gap-1.5">
-                {e.particulars}
-                {e.receipt && <a href={e.receipt} target="_blank" rel="noreferrer" className="text-[#8a6f42]"><ImagePlus size={12} /></a>}
-              </span>
-              <span className="font-ticket text-xs text-[#9C9686]">{e.folio || "—"}</span>
-              <span className="font-ticket text-sm text-right text-[#16261F]">{money(e.amount)}</span>
-              <button onClick={() => removeEntry(e.id)} className="text-[#C1694F] justify-self-end"><Trash2 size={14} /></button>
-            </div>
+            editingId === e.id ? (
+              <div key={e.id} className="px-4 py-3 space-y-2 bg-[#FAF8F2]">
+                <div className="grid grid-cols-2 gap-2">
+                  <input value={editForm.particulars} onChange={(ev) => setEditForm({ ...editForm, particulars: ev.target.value })}
+                    placeholder="Particulars" className="border border-[#EAE4D3] rounded-lg px-2.5 py-1.5 text-sm" />
+                  <input value={editForm.folio} onChange={(ev) => setEditForm({ ...editForm, folio: ev.target.value })}
+                    placeholder="Folio" className="border border-[#EAE4D3] rounded-lg px-2.5 py-1.5 text-sm font-ticket" />
+                </div>
+                <div className="flex items-center gap-2">
+                  <input value={editForm.amount} onChange={(ev) => setEditForm({ ...editForm, amount: ev.target.value })} inputMode="decimal"
+                    placeholder="Amount" className="border border-[#EAE4D3] rounded-lg px-2.5 py-1.5 text-sm font-ticket flex-1" />
+                  <button onClick={() => saveEdit(e.id)} className="p-1.5 bg-[#7C8F5E] text-white rounded-full shrink-0"><Save size={14} /></button>
+                  <button onClick={cancelEdit} className="p-1.5 bg-[#9C9686] text-white rounded-full shrink-0"><X size={14} /></button>
+                </div>
+              </div>
+            ) : (
+              <div key={e.id} className="grid grid-cols-[70px_1fr_70px_90px_60px] gap-2 px-4 py-2.5 items-center text-sm">
+                <span className="font-ticket text-xs text-[#9C9686]">{e.date.slice(8, 10)}/{e.date.slice(5, 7)}</span>
+                <span className="text-[#16261F] truncate flex items-center gap-1.5">
+                  {e.particulars}
+                  {e.receipt && <a href={e.receipt} target="_blank" rel="noreferrer" className="text-[#8a6f42]"><ImagePlus size={12} /></a>}
+                </span>
+                <span className="font-ticket text-xs text-[#9C9686]">{e.folio || "—"}</span>
+                <span className="font-ticket text-sm text-right text-[#16261F]">{money(e.amount)}</span>
+                <span className="flex items-center gap-2 justify-self-end">
+                  <button onClick={() => startEdit(e)} className="text-[#5c5648] hover:text-[#16261F]"><Pencil size={14} /></button>
+                  <button onClick={() => removeEntry(e.id)} className="text-[#C1694F]"><Trash2 size={14} /></button>
+                </span>
+              </div>
+            )
           ))}
         </div>
-        <div className="grid grid-cols-[70px_1fr_70px_90px_36px] gap-2 px-4 py-3 bg-[#FAF8F2] border-t border-[#F0EBDD]">
+        <div className="grid grid-cols-[70px_1fr_70px_90px_60px] gap-2 px-4 py-3 bg-[#FAF8F2] border-t border-[#F0EBDD]">
           <span></span><span className="font-ui font-semibold text-sm text-[#16261F]">Total</span><span></span>
           <span className="font-display font-600 text-lg text-right text-[#8a6f42]">{money(total)}</span><span></span>
         </div>

@@ -660,6 +660,11 @@ function Dashboard({ expenses, income, isOwner }) {
     month: monthLabel(m).split(" ")[0],
     expense: expenses.filter((e) => monthKey(e.date) === m).reduce((s, e) => s + e.amount, 0),
   }));
+  const monthlyIncomeExpense = months.map((m) => ({
+    month: monthLabel(m).split(" ")[0],
+    income: income.filter((i) => monthKey(i.date) === m).reduce((s, i) => s + i.amount, 0),
+    expense: expenses.filter((e) => monthKey(e.date) === m).reduce((s, e) => s + e.amount, 0),
+  }));
 
   const recommendations = useMemo(() => generateRecommendations(fyExpenses), [expenses]);
 
@@ -704,6 +709,26 @@ function Dashboard({ expenses, income, isOwner }) {
           </ResponsiveContainer>
         </div>
       </div>
+
+      {isOwner && (
+        <div className="bg-white rounded-2xl shadow-sm p-4">
+          <div className="font-display text-lg font-600 text-[#16261F] mb-3">Income vs Expense — FY {fyStart.getFullYear()}</div>
+          <div style={{ width: "100%", height: 260 }}>
+            <ResponsiveContainer>
+              <BarChart data={monthlyIncomeExpense} margin={{ left: 0, right: 10 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#F0EBDD" vertical={false} />
+                <XAxis dataKey="month" tick={{ fontSize: 11, fill: "#9C9686" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11, fill: "#9C9686" }} axisLine={false} tickLine={false} />
+                <Tooltip contentStyle={{ borderRadius: 12, border: "1px solid #F0EBDD", fontSize: 12 }} formatter={(v) => money(v)} />
+                <Legend wrapperStyle={{ fontSize: 12, fontFamily: "Jost, sans-serif" }} />
+                <Bar dataKey="income" name="Income" fill="#7C8F5E" radius={[8, 8, 0, 0]} />
+                <Bar dataKey="expense" name="Expense" fill="#C1694F" radius={[8, 8, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+          <p className="text-[10px] text-[#9C9686] font-ui mt-2 italic">Visible to owner only.</p>
+        </div>
+      )}
 
       <div className="grid lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2 bg-white rounded-2xl shadow-sm p-4">
